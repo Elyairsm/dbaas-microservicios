@@ -2,7 +2,7 @@
 
 > Plataforma distribuida de almacenamiento y consulta de datos basada en microservicios con gRPC, RabbitMQ y MPI.
 
-**Materia:** Programación Distribuida y Paralela  
+**Materia:** Programación Distribuida  
 **Tecnologías:** Python · FastAPI · gRPC · RabbitMQ · MPI · Docker · SQLite · JWT
 
 ---
@@ -295,8 +295,8 @@ docker start dbaas_auth  # login restaurado
 
 ---
 
-## 👤 Autor
+## 👤 Autores
 
 **Yair Santiago** — [@Elyairsm](https://github.com/Elyairsm)
 **Ricardo Hernandez** - [@Richardx-o](https://github.com/Richardx-o)
-Proyecto desarrollado para la materia de **Programación Distribuida y Paralela**.
+Proyecto desarrollado para la materia de **Programación Distribuida **.
