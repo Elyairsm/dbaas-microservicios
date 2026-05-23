@@ -298,5 +298,5 @@ docker start dbaas_auth  # login restaurado
 ## 👤 Autor
 
 **Yair Santiago** — [@Elyairsm](https://github.com/Elyairsm)
-
+**Ricardo Hernandez** - [@Richardx-o](https://github.com/Richardx-o)
 Proyecto desarrollado para la materia de **Programación Distribuida y Paralela**.
