@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBaaS — Panel de Control</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --bg2: #1a1d27; --bg3: #252836;
+  --accent: #6c63ff; --green: #00d4aa; --red: #ff4757;
+  --yellow: #ffa502; --text: #e8eaf6; --text2: #9ea3c0; --border: #2d3148;
+}
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+#login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+.login-card { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:40px; width:420px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.login-card h1 { text-align:center; margin-bottom:6px; font-size:26px; }
+.subtitle { text-align:center; color:var(--text2); margin-bottom:28px; font-size:13px; }
+.tab-switch { display:flex; background:var(--bg3); border-radius:8px; padding:4px; margin-bottom:22px; }
+.tab-switch button { flex:1; padding:8px; border:none; background:none; color:var(--text2); border-radius:6px; cursor:pointer; font-size:14px; transition:all .2s; }
+.tab-switch button.active { background:var(--accent); color:#fff; }
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; font-size:11px; color:var(--text2); margin-bottom:5px; text-transform:uppercase; letter-spacing:.5px; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:10px 14px; background:var(--bg3); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:14px; outline:none; transition:border .2s; font-family:inherit;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); }
+.form-group select option { background:var(--bg3); }
+.btn { width:100%; padding:11px; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; transition:all .2s; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#7c74ff; }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-success { background:var(--green); color:#0f1117; }
+.btn-warning { background:var(--yellow); color:#0f1117; }
+.btn-sm { width:auto; padding:6px 12px; font-size:12px; }
+.alert { padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; display:none; }
+.alert-success { background:rgba(0,212,170,.15); border:1px solid var(--green); color:var(--green); }
+.alert-error { background:rgba(255,71,87,.15); border:1px solid var(--red); color:var(--red); }
+#app { display:none; flex-direction:row; min-height:100vh; }
+.sidebar { width:220px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:20px 0; flex-shrink:0; }
+.sidebar-logo { padding:0 20px 18px; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.sidebar-logo h2 { font-size:18px; color:var(--accent); }
+.sidebar-logo p { font-size:11px; color:var(--text2); margin-top:3px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; cursor:pointer; color:var(--text2); transition:all .2s; font-size:14px; border-left:3px solid transparent; }
+.nav-item:hover { background:var(--bg3); color:var(--text); }
+.nav-item.active { background:var(--bg3); color:var(--accent); border-left-color:var(--accent); }
+.nav-item span:first-child { font-size:17px; }
+.sidebar-footer { margin-top:auto; padding:16px 20px; border-top:1px solid var(--border); }
+.user-badge { display:flex; align-items:center; gap:8px; }
+.user-avatar { width:32px; height:32px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; }
+.user-name { font-size:13px; font-weight:600; }
+.user-role { font-size:11px; color:var(--text2); }
+.btn-logout { background:none; border:none; color:var(--text2); cursor:pointer; font-size:18px; margin-left:auto; }
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar { height:58px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 24px; gap:12px; }
+.topbar h2 { font-size:17px; }
+.status-pill { display:flex; align-items:center; gap:6px; background:var(--bg3); padding:5px 12px; border-radius:20px; font-size:11px; color:var(--text2); margin-left:auto; }
+.dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+.content { flex:1; overflow-y:auto; padding:22px; }
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
+.card-title { font-size:12px; font-weight:600; margin-bottom:14px; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { text-align:left; padding:9px 12px; background:var(--bg3); color:var(--text2); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+.data-table td { padding:9px 12px; border-bottom:1px solid var(--border); }
+.data-table tr:hover td { background:var(--bg3); }
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.tag-admin { background:rgba(108,99,255,.2); color:var(--accent); }
+.tag-writer { background:rgba(0,212,170,.2); color:var(--green); }
+.tag-reader { background:rgba(255,165,2,.2); color:var(--yellow); }
+.result-box { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; font-family:'Courier New',monospace; font-size:12px; max-height:280px; overflow-y:auto; white-space:pre-wrap; color:var(--green); margin-top:12px; }
+.result-error { color:var(--red); }
+.sql-editor { width:100%; height:110px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; color:var(--green); font-family:'Courier New',monospace; font-size:13px; outline:none; resize:vertical; transition:border .2s; }
+.sql-editor:focus { border-color:var(--accent); }
+.col-row { display:grid; grid-template-columns:1fr 1fr auto auto auto; gap:6px; align-items:center; margin-bottom:6px; }
+.col-row input, .col-row select { padding:6px 9px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; outline:none; }
+.col-row label { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text2); white-space:nowrap; }
+.icon-btn { background:none; border:1px solid var(--border); border-radius:6px; color:var(--red); cursor:pointer; padding:5px 8px; font-size:14px; }
+.agg-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:14px; }
+.agg-btn { padding:9px; border:1px solid var(--border); border-radius:8px; background:var(--bg3); color:var(--text); cursor:pointer; font-size:12px; font-weight:600; transition:all .2s; text-align:center; }
+.agg-btn:hover { border-color:var(--accent); color:var(--accent); }
+.agg-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.chip-list { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { display:flex; align-items:center; gap:6px; padding:4px 10px; background:var(--bg3); border:1px solid var(--border); border-radius:20px; font-size:13px; cursor:pointer; transition:all .2s; }
+.chip:hover { border-color:var(--accent); }
+.chip-del { color:var(--red); font-size:16px; line-height:1; }
+.input-row { display:flex; gap:8px; }
+.input-row input, .input-row select { flex:1; }
+.input-row .btn { width:auto; padding:10px 16px; }
+.quick-btns { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.quick-btn { padding:5px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg3); color:var(--text2); cursor:pointer; font-size:11px; transition:all .2s; }
+.quick-btn:hover { border-color:var(--accent); color:var(--accent); }
+::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-track { background:var(--bg2); } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>🗄️ DBaaS</h1>
+    <p class="subtitle">Plataforma Distribuida de Base de Datos como Servicio</p>
+    <div class="tab-switch">
+      <button class="active" onclick="switchTab('login')">Iniciar Sesión</button>
+      <button onclick="switchTab('register')">Registrarse</button>
+    </div>
+    <div id="auth-alert" class="alert"></div>
+    <div id="login-form">
+      <div class="form-group"><label>Usuario</label><input type="text" id="lu" value="admin" placeholder="admin"></div>
+      <div class="form-group"><label>Contraseña</label><input type="password" id="lp" value="admin123" placeholder="••••••••"></div>
+      <button class="btn btn-primary" onclick="doLogin()">Entrar →</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label>Usuario</label><input type="text" id="ru" placeholder="nuevo_usuario"></div>
+      <div class="form-group"><label>Contraseña</label><input type="password" id="rp" placeholder="••••••••"></div>
+      <div class="form-group"><label>Rol</label>
+        <select id="rr">
+          <option value="reader">📖 Lector (reader)</option>
+          <option value="writer">✏️ Escritor (writer)</option>
+          <option value="admin">👑 Administrador (admin)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()">Crear Cuenta</button>
+    </div>
+    <p style="text-align:center;font-size:11px;color:var(--text2);margin-top:14px">API: <span style="color:var(--accent)">http://localhost:8000</span></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo"><h2>🗄️ DBaaS</h2><p>Panel de Control</p></div>
+    <div id="nav-admin" class="nav-item active" onclick="showSec('admin',this)"><span>🏗️</span><span>Administración</span></div>
+    <div id="nav-crud" class="nav-item" onclick="showSec('crud',this)"><span>📝</span><span>CRUD</span></div>
+    <div id="nav-sql" class="nav-item" onclick="showSec('sql',this)"><span>🔍</span><span>Consola SQL</span></div>
+    <div id="nav-nosql" class="nav-item" onclick="showSec('nosql',this)"><span>📦</span><span>Consola NoSQL</span></div>
+    <div id="nav-agg" class="nav-item" onclick="showSec('agg',this)"><span>📊</span><span>Agregaciones</span></div>
+    <div id="nav-users" class="nav-item" onclick="showSec('users',this)"><span>👥</span><span>Usuarios</span></div>
+    <div id="nav-arch" class="nav-item" onclick="showSec('arch',this)"><span>🌐</span><span>Arquitectura</span></div>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="uavatar">A</div>
+        <div><div class="user-name" id="uname">admin</div><div class="user-role" id="urole">admin</div></div>
+        <button class="btn-logout" onclick="doLogout()" title="Salir">⏏</button>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <h2 id="sec-title">🏗️ Administración</h2>
+      <div class="status-pill"><div class="dot"></div>gRPC · RabbitMQ · MPI activos</div>
+    </div>
+    <div class="content">
+
+      <!-- ADMIN -->
+      <div id="sec-admin">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">➕ Crear Base de Datos</div>
+            <div class="form-group"><label>Nombre</label>
+              <div class="input-row">
+                <input type="text" id="new-db" placeholder="mi_base_datos">
+                <button class="btn btn-primary" onclick="createDB()">Crear</button>
+              </div>
+            </div>
+            <div id="db-alert" class="alert"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 Bases de Datos</div>
+            <button class="btn btn-primary" style="margin-bottom:12px" onclick="loadDBs()">🔄 Actualizar</button>
+            <div id="db-chips" class="chip-list"><p style="color:var(--text2);font-size:13px">Cargando...</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🗂️ Tablas / Colecciones</div>
+          <div class="grid-2" style="margin-bottom:14px">
+            <div class="form-group" style="margin:0"><label>Base de Datos</label>
+              <select id="tbl-db-sel" onchange="loadTables()"><option value="">-- Selecciona BD --</option></select>
+            </div>
+            <div class="form-group" style="margin:0"><label>Nueva Tabla</label>
+              <div class="input-row">
+                <input type="text" id="new-tbl" placeholder="mi_tabla">
+                <button class="btn btn-primary" onclick="openColBuilder()">Crear</button>
+              </div>
+            </div>
+          </div>
+          <div id="col-builder" style="display:none;margin-bottom:14px">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Definir columnas:</div>
+            <div id="cols-container"></div>
+            <button onclick="addCol()" style="width:100%;background:none;border:1px dashed var(--border);color:var(--text2);padding:6px;border-radius:6px;cursor:pointer;font-size:12px;margin-top:4px">+ Agregar columna</button>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-success" onclick="createTable()">✅ Crear Tabla</button>
+              <button class="btn btn-danger btn-sm" onclick="document.getElementById('col-builder').style.display='none'" style="width:auto;padding:10px 16px">Cancelar</button>
+            </div>
+          </div>
+          <div id="tbl-alert" class="alert"></div>
+          <div id="tbl-list"><p style="color:var(--text2);font-size:13px">Selecciona una base de datos.</p></div>
+        </div>
+      </div>
+
+      <!-- CRUD -->
+      <div id="sec-crud" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ Contexto</div>
+          <div class="grid-2">
+            <div class="form-group" style="margin:0"><label>Base de Datos</label>
+              <select id="cdb" onchange="loadCrudTables()"><option value="">-- BD --</option></select>
+            </div>
+            <div class="form-group" style="margin:0"><label>Tabla</label>
+              <select id="ctbl"><option value="">-- Tabla --</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">➕ Insertar</div>
+            <div class="form-group"><label>Datos (JSON)</label>
+              <textarea class="sql-editor" id="ins-data" style="height:80px">{"nombre": "Ana", "edad": 25}</textarea>
+            </div>
+            <button class="btn btn-success" onclick="doCRUD('insert')">Insertar</button>
+            <div id="ins-res" class="result-box" style="display:none"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">🔍 Buscar</div>
+            <div class="form-group"><label>Filtro JSON (vacío = todos)</label>
+              <textarea class="sql-editor" id="find-data" style="height:80px">{}</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="doCRUD('find')">Buscar</button>
+            <div id="find-res" style="margin-top:12px;overflow-x:auto"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">✏️ Actualizar</div>
+            <div class="form-group"><label>Filtro JSON</label>
+              <textarea class="sql-editor" id="upd-filter" style="height:65px">{"nombre": "Ana"}</textarea>
+            </div>
+            <div class="form-group"><label>Nuevos valores JSON</label>
+              <textarea class="sql-editor" id="upd-data" style="height:65px">{"edad": 26}</textarea>
+            </div>
+            <button class="btn btn-warning" onclick="doCRUD('update')">Actualizar</button>
+            <div id="upd-res" class="result-box" style="display:none"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">🗑️ Eliminar</div>
+            <div class="form-group"><label>Filtro JSON (vacío = TODOS)</label>
+              <textarea class="sql-editor" id="del-filter" style="height:80px">{"nombre": "Ana"}</textarea>
+            </div>
+            <button class="btn btn-danger" onclick="doCRUD('delete')">Eliminar</button>
+            <div id="del-res" class="result-box" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SQL -->
+      <div id="sec-sql" style="display:none">
+        <div class="card">
+          <div class="card-title">🔍 Consola SQL</div>
+          <div class="form-group"><label>Consulta SQL</label>
+            <textarea class="sql-editor" id="sql-in">SELECT * FROM tienda.productos</textarea>
+          </div>
+          <div class="quick-btns">
+            <button class="quick-btn" onclick="setSQL('SELECT * FROM {db}.{tabla}')">SELECT *</button>
+            <button class="quick-btn" onclick="setSQL('SELECT * FROM {db}.{tabla} WHERE precio > 100')">WHERE</button>
+            <button class="quick-btn" onclick="setSQL('SELECT COUNT(*) FROM {db}.{tabla}')">COUNT(*)</button>
+            <button class="quick-btn" onclick="setSQL('SELECT SUM(precio) FROM {db}.{tabla}')">SUM</button>
+            <button class="quick-btn" onclick="setSQL('SELECT AVG(precio) FROM {db}.{tabla}')">AVG</button>
+            <button class="quick-btn" onclick="setSQL('SELECT DISTINCT categoria FROM {db}.{tabla}')">DISTINCT</button>
+            <button class="quick-btn" onclick="setSQL('SELECT * FROM {db}.t1 INNER JOIN {db}.t2 ON t1._id = t2.fk_id')">INNER JOIN</button>
+            <button class="quick-btn" onclick="setSQL('INSERT INTO {db}.{tabla} (nombre, precio) VALUES (\"Producto\", 99.99)')">INSERT</button>
+            <button class="quick-btn" onclick="setSQL('UPDATE {db}.{tabla} SET precio = 199 WHERE nombre = \"Producto\"')">UPDATE</button>
+            <button class="quick-btn" onclick="setSQL('DELETE FROM {db}.{tabla} WHERE nombre = \"Producto\"')">DELETE</button>
+          </div>
+          <button class="btn btn-primary" onclick="runSQL()" style="margin-bottom:14px">▶ Ejecutar SQL</button>
+          <div id="sql-res"></div>
+        </div>
+      </div>
+
+      <!-- NOSQL -->
+      <div id="sec-nosql" style="display:none">
+        <div class="card">
+          <div class="card-title">📦 Consola NoSQL (JSON)</div>
+          <div class="grid-2" style="margin-bottom:14px">
+            <div class="form-group" style="margin:0"><label>Base de Datos</label><input type="text" id="ndb" placeholder="tienda"></div>
+            <div class="form-group" style="margin:0"><label>Colección</label><input type="text" id="ncol" placeholder="productos"></div>
+          </div>
+          <div class="form-group"><label>Operación</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+              <button class="agg-btn active" id="nop-insert" onclick="setNOp('insert')">insert</button>
+              <button class="agg-btn" id="nop-find" onclick="setNOp('find')">find</button>
+              <button class="agg-btn" id="nop-update" onclick="setNOp('update')">update</button>
+              <button class="agg-btn" id="nop-delete" onclick="setNOp('delete')">delete</button>
+              <button class="agg-btn" id="nop-aggregate" onclick="setNOp('aggregate')">aggregate</button>
+            </div>
+          </div>
+          <div class="form-group"><label>Payload (JSON)</label>
+            <textarea class="sql-editor" id="npayload" style="height:130px">{"record": {"nombre": "Laptop", "precio": 999.99}}</textarea>
+          </div>
+          <div class="quick-btns">
+            <button class="quick-btn" onclick="setNPayload('insert')">📄 insert</button>
+            <button class="quick-btn" onclick="setNPayload('find')">🔍 find</button>
+            <button class="quick-btn" onclick="setNPayload('update')">✏️ update</button>
+            <button class="quick-btn" onclick="setNPayload('delete')">🗑️ delete</button>
+            <button class="quick-btn" onclick="setNPayload('aggregate')">📊 aggregate</button>
+          </div>
+          <button class="btn btn-primary" onclick="runNoSQL()" style="margin-bottom:14px">▶ Ejecutar NoSQL</button>
+          <div id="nosql-res"></div>
+        </div>
+      </div>
+
+      <!-- AGREGACIONES -->
+      <div id="sec-agg" style="display:none">
+        <div class="card">
+          <div class="card-title">📊 Agregaciones distribuidas con MPI</div>
+          <div class="grid-2" style="margin-bottom:14px">
+            <div class="form-group" style="margin:0"><label>Base de Datos</label><input type="text" id="adb" placeholder="tienda"></div>
+            <div class="form-group" style="margin:0"><label>Tabla</label><input type="text" id="atbl" placeholder="productos"></div>
+          </div>
+          <div class="form-group"><label>Tipo de Agregación</label>
+            <div class="agg-grid">
+              <button class="agg-btn active" onclick="setAgg('COUNT',this)">COUNT(*)</button>
+              <button class="agg-btn" onclick="setAgg('SUM',this)">SUM(campo)</button>
+              <button class="agg-btn" onclick="setAgg('AVG',this)">AVG(campo)</button>
+              <button class="agg-btn" onclick="setAgg('DISTINCT',this)">DISTINCT</button>
+              <button class="agg-btn" onclick="setAgg('JOIN',this)">INNER JOIN</button>
+            </div>
+          </div>
+          <div id="agg-field-g" style="display:none" class="form-group"><label>Campo</label><input type="text" id="afield" placeholder="precio"></div>
+          <div id="agg-join-g" style="display:none">
+            <div class="grid-2">
+              <div class="form-group"><label>Tabla derecha</label><input type="text" id="ajt" placeholder="pedidos"></div>
+              <div class="form-group"><label>Clave izquierda</label><input type="text" id="alk" placeholder="_id"></div>
+            </div>
+            <div class="form-group"><label>Clave derecha</label><input type="text" id="ark" placeholder="producto_id"></div>
+          </div>
+          <button class="btn btn-primary" onclick="runAgg()" style="margin-bottom:14px">▶ Ejecutar Agregación</button>
+          <div id="agg-res"></div>
+        </div>
+      </div>
+
+      <!-- USUARIOS -->
+      <div id="sec-users" style="display:none">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">👤 Crear Usuario</div>
+            <div class="form-group"><label>Usuario</label><input type="text" id="nuser" placeholder="nuevo_usuario"></div>
+            <div class="form-group"><label>Contraseña</label><input type="password" id="npass" placeholder="••••••••"></div>
+            <div class="form-group"><label>Rol</label>
+              <select id="nrole">
+                <option value="reader">📖 Lector</option>
+                <option value="writer">✏️ Escritor</option>
+                <option value="admin">👑 Administrador</option>
+              </select>
+            </div>
+            <div id="user-alert" class="alert"></div>
+            <button class="btn btn-primary" onclick="createUser()">Crear Usuario</button>
+          </div>
+          <div class="card">
+            <div class="card-title">🔐 Roles del Sistema</div>
+            <table class="data-table">
+              <tr><th>Rol</th><th>Permisos</th></tr>
+              <tr><td><span class="tag tag-admin">admin</span></td><td>Todo: BD, tablas, CRUD, usuarios</td></tr>
+              <tr><td><span class="tag tag-writer">writer</span></td><td>Insertar, actualizar, eliminar, leer</td></tr>
+              <tr><td><span class="tag tag-reader">reader</span></td><td>Solo lectura y agregaciones</td></tr>
+            </table>
+            <div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:8px">
+              <p style="font-size:12px;color:var(--text2)">Sesión activa:</p>
+              <p style="font-size:14px;margin-top:4px">👤 <strong id="si-user"></strong> · <strong id="si-role"></strong></p>
+              <p style="font-size:10px;color:var(--text2);margin-top:6px;word-break:break-all;font-family:monospace" id="si-token"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARQUITECTURA -->
+      <div id="sec-arch" style="display:none">
+        <div class="card">
+          <div class="card-title">🌐 Arquitectura Distribuida</div>
+          <div class="grid-2">
+            <div>
+              <h3 style="font-size:13px;margin-bottom:10px;color:var(--accent)">🖥️ Mac — Procesamiento</h3>
+              <table class="data-table">
+                <tr><th>Servicio</th><th>Puerto</th></tr>
+                <tr><td>🌐 API Gateway</td><td>8000</td></tr>
+                <tr><td>🔍 Query Engine</td><td>50054</td></tr>
+                <tr><td>📊 Aggregation+MPI</td><td>50055</td></tr>
+                <tr><td>🐰 RabbitMQ</td><td>5672</td></tr>
+              </table>
+            </div>
+            <div>
+              <h3 style="font-size:13px;margin-bottom:10px;color:var(--yellow)">🐧 Ubuntu 192.168.1.79 — Datos</h3>
+              <table class="data-table">
+                <tr><th>Servicio</th><th>Puerto</th></tr>
+                <tr><td>🔐 Auth Service</td><td>50051</td></tr>
+                <tr><td>🏗️ Admin Service</td><td>50052</td></tr>
+                <tr><td>💾 Storage Service</td><td>50053</td></tr>
+              </table>
+            </div>
+          </div>
+          <div style="margin-top:14px;padding:14px;background:var(--bg);border-radius:8px;font-family:monospace;font-size:12px;line-height:2">
+            <span style="color:var(--green)">Mac Gateway</span> <span style="color:var(--accent)">──gRPC──▶</span> <span style="color:var(--yellow)">Ubuntu Auth / Admin</span><br>
+            <span style="color:var(--green)">Mac Query</span> <span style="color:var(--accent)">──gRPC──▶</span> <span style="color:var(--yellow)">Ubuntu Storage</span><br>
+            <span style="color:var(--green)">Mac Query</span> <span style="color:var(--red)">──RabbitMQ──▶</span> <span style="color:var(--green)">Mac Aggregation</span><br>
+            <span style="color:var(--green)">Mac Aggregation</span> <span style="color:var(--accent)">──MPI──▶</span> <span style="color:var(--green)">4 Workers locales</span>
+          </div>
+          <button class="btn btn-primary" onclick="checkHealth()" style="margin-top:14px">🏥 Verificar Estado</button>
+          <div id="health-res" class="result-box" style="display:none;margin-top:12px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let token = null, me = null, myRole = null, curAgg = 'COUNT', curNOp = 'insert';
+let cols = [];
+
+// ─── AUTH ───────────────────────────────────────────────────────────
+function switchTab(t) {
+  document.querySelectorAll('.tab-switch button').forEach((b,i)=>b.classList.toggle('active',(t==='login'&&i===0)||(t==='register'&&i===1)));
+  document.getElementById('login-form').style.display = t==='login'?'block':'none';
+  document.getElementById('register-form').style.display = t==='register'?'block':'none';
+}
+async function doLogin() {
+  const u=V('lu'),p=V('lp');
+  if(!u||!p) return alert2('auth-alert','error','Completa los campos');
+  try {
+    const d=await post(`${API}/auth/login`,{username:u,password:p});
+    if(d.success){token=d.token;me=u;myRole=d.role;enterApp();}
+    else alert2('auth-alert','error',d.detail||d.message||'Credenciales inválidas');
+  } catch(e){alert2('auth-alert','error','Sin conexión con '+API);}
+}
+async function doRegister() {
+  const u=V('ru'),p=V('rp'),r=V('rr');
+  if(!u||!p) return alert2('auth-alert','error','Completa los campos');
+  const h={'Content-Type':'application/json'};
+  if(r!=='reader'&&token) h['Authorization']=`Bearer ${token}`;
+  try {
+    const d=await fetch(`${API}/auth/register`,{method:'POST',headers:h,body:JSON.stringify({username:u,password:p,role:r})}).then(r=>r.json());
+    d.success?alert2('auth-alert','success',`Usuario ${u} creado`):alert2('auth-alert','error',d.detail||d.message);
+  } catch(e){alert2('auth-alert','error','Error de conexión');}
+}
+function enterApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('uavatar').textContent=me[0].toUpperCase();
+  document.getElementById('uname').textContent=me;
+  document.getElementById('urole').textContent=myRole;
+  document.getElementById('si-user').textContent=me;
+  document.getElementById('si-role').textContent=myRole;
+  document.getElementById('si-token').textContent=token.substring(0,50)+'…';
+  applyRolePermissions();
+  loadDBs();
+}
+
+function applyRolePermissions(){
+  const isAdmin  = myRole==='admin';
+  const isWriter = myRole==='writer'||isAdmin;
+  const isReader = true; // todos pueden leer
+
+  // Mostrar/ocultar secciones del sidebar
+  document.getElementById('nav-admin').style.display  = isAdmin  ? 'flex' : 'none';
+  document.getElementById('nav-users').style.display  = isAdmin  ? 'flex' : 'none';
+  document.getElementById('nav-crud').style.display   = isWriter ? 'flex' : 'none';
+
+  // Redirigir a sección permitida si es reader
+  if(!isAdmin){
+    // Activar SQL como sección por defecto para writer y reader
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.getElementById('nav-sql').classList.add('active');
+    ['admin','crud','sql','nosql','agg','users','arch'].forEach(s=>{
+      document.getElementById('sec-'+s).style.display=s==='sql'?'block':'none';
+    });
+    document.getElementById('sec-title').textContent='🔍 Consola SQL';
+  }
+
+  // Para reader: deshabilitar botones de escritura en SQL
+  if(!isWriter){
+    // Ocultar botones INSERT, UPDATE, DELETE en consola SQL
+    document.querySelectorAll('.quick-btn').forEach(btn=>{
+      const t=btn.textContent.trim().toUpperCase();
+      if(['INSERT','UPDATE','DELETE'].includes(t)) btn.style.display='none';
+    });
+    // Mostrar badge de solo lectura
+    const badge=document.createElement('div');
+    badge.style='background:rgba(255,165,2,.15);border:1px solid #ffa502;color:#ffa502;padding:6px 12px;border-radius:8px;font-size:12px;margin-bottom:12px';
+    badge.textContent='📖 Modo solo lectura — puedes ejecutar SELECT y agregaciones';
+    const sqlCard=document.querySelector('#sec-sql .card');
+    if(sqlCard) sqlCard.insertBefore(badge,sqlCard.firstChild);
+    const nosqlCard=document.querySelector('#sec-nosql .card');
+    if(nosqlCard){
+      // Ocultar operaciones de escritura en NoSQL
+      ['nop-insert','nop-update','nop-delete'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.style.display='none';
+      });
+    }
+  }
+  
+  // Badge de rol en topbar
+  const pill=document.querySelector('.status-pill');
+  if(pill){
+    const roleColors={admin:'#6c63ff',writer:'#00d4aa',reader:'#ffa502'};
+    const roleLabel={admin:'👑 Administrador',writer:'✏️ Escritor',reader:'📖 Lector'};
+    pill.innerHTML=`<div class="dot"></div><span style="color:${roleColors[myRole]}">${roleLabel[myRole]}</span> · gRPC · RabbitMQ · MPI`;
+  }
+}
+function doLogout(){token=me=myRole=null;document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+
+// ─── NAV ────────────────────────────────────────────────────────────
+const TITLES={admin:'🏗️ Administración',crud:'📝 CRUD',sql:'🔍 Consola SQL',nosql:'📦 Consola NoSQL',agg:'📊 Agregaciones',users:'👥 Usuarios',arch:'🌐 Arquitectura'};
+function showSec(name,el){
+  ['admin','crud','sql','nosql','agg','users','arch'].forEach(s=>document.getElementById(`sec-${s}`).style.display=s===name?'block':'none');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sec-title').textContent=TITLES[name];
+  if(name==='crud')loadDBsFor('cdb',loadCrudTables);
+  if(name==='agg'){}
+}
+
+// ─── DATABASES ──────────────────────────────────────────────────────
+async function loadDBs(){
+  try{
+    const d=await api('GET','/admin/databases');
+    const chips=document.getElementById('db-chips');
+    const sel=document.getElementById('tbl-db-sel');
+    chips.innerHTML='';sel.innerHTML='<option value="">-- Selecciona BD --</option>';
+    if(!d.items||!d.items.length){chips.innerHTML='<p style="color:var(--text2);font-size:13px">Sin bases de datos.</p>';return;}
+    d.items.forEach(db=>{
+      const c=document.createElement('div');c.className='chip';
+      c.innerHTML=`🗄️ ${db} <span class="chip-del" onclick="delDB('${db}')">×</span>`;
+      c.onclick=e=>{if(e.target.classList.contains('chip-del'))return;document.getElementById('tbl-db-sel').value=db;loadTables();};
+      chips.appendChild(c);
+      const o=document.createElement('option');o.value=db;o.textContent=db;sel.appendChild(o);
+    });
+  }catch(e){}
+}
+async function createDB(){
+  const n=V('new-db');if(!n)return alert2('db-alert','error','Escribe un nombre');
+  try{const d=await api('POST','/admin/databases',{db_name:n});
+    d.success?alert2('db-alert','success',d.message):alert2('db-alert','error',d.message||d.detail);
+    document.getElementById('new-db').value='';loadDBs();
+  }catch(e){alert2('db-alert','error','Error');}
+}
+async function delDB(n){if(!confirm(`¿Eliminar BD "${n}"?`))return;await api('DELETE',`/admin/databases/${n}`);loadDBs();}
+
+// ─── TABLES ─────────────────────────────────────────────────────────
+async function loadTables(){
+  const db=V('tbl-db-sel');if(!db)return;
+  try{const d=await api('GET',`/admin/databases/${db}/tables`);
+    const c=document.getElementById('tbl-list');
+    if(!d.items||!d.items.length){c.innerHTML='<p style="color:var(--text2);font-size:13px">Sin tablas.</p>';return;}
+    c.innerHTML='<table class="data-table"><tr><th>Tabla</th><th>Acción</th></tr>'+
+      d.items.map(t=>`<tr><td>📋 ${t}</td><td><button class="btn btn-danger btn-sm" onclick="delTable('${db}','${t}')">🗑️</button></td></tr>`).join('')+'</table>';
+  }catch(e){}
+}
+function openColBuilder(){
+  if(!V('tbl-db-sel')){alert('Selecciona BD primero');return;}
+  cols=[{name:'',type:'string',nullable:true,primary:false}];
+  renderCols();document.getElementById('col-builder').style.display='block';
+}
+function renderCols(){
+  document.getElementById('cols-container').innerHTML=cols.map((c,i)=>`
+    <div class="col-row">
+      <input type="text" placeholder="nombre" value="${c.name}" oninput="cols[${i}].name=this.value">
+      <select onchange="cols[${i}].type=this.value">
+        <option value="string" ${c.type==='string'?'selected':''}>string</option>
+        <option value="int" ${c.type==='int'?'selected':''}>int</option>
+        <option value="float" ${c.type==='float'?'selected':''}>float</option>
+        <option value="bool" ${c.type==='bool'?'selected':''}>bool</option>
+      </select>
+      <label><input type="checkbox" ${c.nullable?'checked':''} onchange="cols[${i}].nullable=this.checked"> Null</label>
+      <label><input type="checkbox" ${c.primary?'checked':''} onchange="cols[${i}].primary=this.checked"> PK</label>
+      <button class="icon-btn" onclick="rmCol(${i})">×</button>
+    </div>`).join('');
+}
+function addCol(){cols.push({name:'',type:'string',nullable:true,primary:false});renderCols();}
+function rmCol(i){cols.splice(i,1);renderCols();}
+async function createTable(){
+  const db=V('tbl-db-sel'),n=V('new-tbl');
+  if(!db||!n)return alert2('tbl-alert','error','Completa BD y nombre');
+  const valid=cols.filter(c=>c.name.trim());
+  if(!valid.length)return alert2('tbl-alert','error','Define columnas');
+  try{const d=await api('POST',`/admin/databases/${db}/tables`,{table_name:n,columns:valid});
+    d.success?alert2('tbl-alert','success',d.message):alert2('tbl-alert','error',d.message||d.detail);
+    document.getElementById('new-tbl').value='';document.getElementById('col-builder').style.display='none';loadTables();
+  }catch(e){alert2('tbl-alert','error','Error');}
+}
+async function delTable(db,t){if(!confirm(`¿Eliminar "${t}"?`))return;await api('DELETE',`/admin/databases/${db}/tables/${t}`);loadTables();}
+
+// ─── CRUD ───────────────────────────────────────────────────────────
+async function loadDBsFor(selId, cb){
+  try{const d=await api('GET','/admin/databases');
+    const s=document.getElementById(selId);s.innerHTML='<option value="">-- BD --</option>';
+    (d.items||[]).forEach(db=>{const o=document.createElement('option');o.value=db;o.textContent=db;s.appendChild(o);});
+    if(cb)s.onchange=cb;
+  }catch(e){}
+}
+async function loadCrudTables(){
+  const db=V('cdb'),s=document.getElementById('ctbl');s.innerHTML='<option value="">-- Tabla --</option>';
+  if(!db)return;
+  try{const d=await api('GET',`/admin/databases/${db}/tables`);
+    (d.items||[]).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;s.appendChild(o);});
+  }catch(e){}
+}
+async function doCRUD(op){
+  const db=V('cdb'),t=V('ctbl');if(!db||!t)return alert('Selecciona BD y tabla');
+  let payload={};
+  try{
+    if(op==='insert')payload={record:JSON.parse(V('ins-data')||'{}')};
+    else if(op==='find')payload={filter:JSON.parse(V('find-data')||'{}')};
+    else if(op==='update')payload={filter:JSON.parse(V('upd-filter')||'{}'),updates:JSON.parse(V('upd-data')||'{}')};
+    else if(op==='delete')payload={filter:JSON.parse(V('del-filter')||'{}')};
+  }catch(e){return alert('JSON inválido: '+e.message);}
+  try{
+    const d=await api('POST','/query/nosql',{db_name:db,collection:t,operation:op,payload});
+    if(op==='find'&&d.rows&&d.rows.length){
+      document.getElementById('find-res').innerHTML=mkTable(d.rows);
+    } else {
+      const el=document.getElementById(`${op==='insert'?'ins':op==='update'?'upd':op==='delete'?'del':'find'}-res`);
+      el.style.display='block';el.className=`result-box ${d.success?'':'result-error'}`;
+      el.textContent=JSON.stringify(d,null,2);
+    }
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ─── SQL ────────────────────────────────────────────────────────────
+function setSQL(t){document.getElementById('sql-in').value=t;}
+async function runSQL(){
+  const sql=V('sql-in');if(!sql)return;
+  try{const d=await api('POST','/query/sql',{sql});
+    const c=document.getElementById('sql-res');
+    if(d.success&&d.rows&&d.rows.length){
+      c.innerHTML=`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">✅ ${d.message}</div><div style="overflow-x:auto">${mkTable(d.rows)}</div>`;
+    }else{
+      c.innerHTML=`<div class="result-box ${d.success?'':'result-error'}">${JSON.stringify(d,null,2)}</div>`;
+    }
+  }catch(e){document.getElementById('sql-res').innerHTML=`<div class="result-box result-error">${e.message}</div>`;}
+}
+
+// ─── NOSQL ──────────────────────────────────────────────────────────
+const NTPLS={
+  insert:'{\n  "record": {\n    "nombre": "Ana",\n    "precio": 25.99\n  }\n}',
+  find:'{\n  "filter": {},\n  "limit": 10\n}',
+  update:'{\n  "filter": {"nombre": "Ana"},\n  "updates": {"precio": 30.0}\n}',
+  delete:'{\n  "filter": {"nombre": "Ana"}\n}',
+  aggregate:'{\n  "op": "COUNT",\n  "field": "",\n  "filter": {}\n}'
+};
+function setNOp(op){curNOp=op;document.querySelectorAll('[id^="nop-"]').forEach(b=>b.classList.remove('active'));document.getElementById(`nop-${op}`).classList.add('active');setNPayload(op);}
+function setNPayload(op){document.getElementById('npayload').value=NTPLS[op]||'{}';}
+async function runNoSQL(){
+  const db=V('ndb'),col=V('ncol');if(!db||!col)return alert('Completa BD y colección');
+  let payload;try{payload=JSON.parse(V('npayload'));}catch(e){return alert('JSON inválido: '+e.message);}
+  try{const d=await api('POST','/query/nosql',{db_name:db,collection:col,operation:curNOp,payload});
+    const c=document.getElementById('nosql-res');
+    if(d.success&&d.rows&&d.rows.length){
+      c.innerHTML=`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">✅ ${d.message}</div><div style="overflow-x:auto">${mkTable(d.rows)}</div>`;
+    }else{
+      c.innerHTML=`<div class="result-box ${d.success?'':'result-error'}">${JSON.stringify(d,null,2)}</div>`;
+    }
+  }catch(e){document.getElementById('nosql-res').innerHTML=`<div class="result-box result-error">${e.message}</div>`;}
+}
+
+// ─── AGREGACIONES ───────────────────────────────────────────────────
+function setAgg(type,el){curAgg=type;document.querySelectorAll('.agg-grid .agg-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');
+  document.getElementById('agg-field-g').style.display=['SUM','AVG','DISTINCT'].includes(type)?'block':'none';
+  document.getElementById('agg-join-g').style.display=type==='JOIN'?'block':'none';
+}
+async function runAgg(){
+  const db=V('adb'),t=V('atbl');if(!db||!t)return alert('Completa BD y tabla');
+  let sql='';
+  const f=V('afield');
+  if(curAgg==='COUNT')sql=`SELECT COUNT(*) FROM ${db}.${t}`;
+  else if(curAgg==='SUM'){if(!f)return alert('Ingresa campo');sql=`SELECT SUM(${f}) FROM ${db}.${t}`;}
+  else if(curAgg==='AVG'){if(!f)return alert('Ingresa campo');sql=`SELECT AVG(${f}) FROM ${db}.${t}`;}
+  else if(curAgg==='DISTINCT'){if(!f)return alert('Ingresa campo');sql=`SELECT DISTINCT ${f} FROM ${db}.${t}`;}
+  else if(curAgg==='JOIN'){
+    const rt=V('ajt'),lk=V('alk'),rk=V('ark');
+    if(!rt||!lk||!rk)return alert('Completa los campos del JOIN');
+    sql=`SELECT * FROM ${db}.${t} INNER JOIN ${db}.${rt} ON ${t}.${lk} = ${rt}.${rk}`;
+  }
+  try{const d=await api('POST','/query/sql',{sql});
+    const c=document.getElementById('agg-res');
+    if(d.success&&d.rows&&d.rows.length){
+      c.innerHTML=`
+        <div style="padding:10px;background:rgba(108,99,255,.1);border:1px solid var(--accent);border-radius:8px;margin-bottom:10px">
+          <span style="font-size:11px;color:var(--text2)">SQL via MPI: </span>
+          <code style="font-size:12px;color:var(--accent)">${sql}</code>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">✅ ${d.message}</div>
+        <div style="overflow-x:auto">${mkTable(d.rows)}</div>`;
+    }else{
+      c.innerHTML=`<div class="result-box ${d.success?'':'result-error'}">${JSON.stringify(d,null,2)}</div>`;
+    }
+  }catch(e){document.getElementById('agg-res').innerHTML=`<div class="result-box result-error">${e.message}</div>`;}
+}
+
+// ─── USUARIOS ───────────────────────────────────────────────────────
+async function createUser(){
+  const u=V('nuser'),p=V('npass'),r=V('nrole');
+  if(!u||!p)return alert2('user-alert','error','Completa los campos');
+  try{const d=await fetch(`${API}/auth/register`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({username:u,password:p,role:r})}).then(r=>r.json());
+    (d.success||d.token)?alert2('user-alert','success',`"${u}" creado con rol ${r}`):alert2('user-alert','error',typeof(d.detail)==="string"?d.detail:(Array.isArray(d.detail)?d.detail[0].msg:d.message)||"Error al crear usuario");
+    document.getElementById('nuser').value='';document.getElementById('npass').value='';
+  }catch(e){alert2('user-alert','error','Error');}
+}
+
+// ─── HEALTH ─────────────────────────────────────────────────────────
+async function checkHealth(){
+  try{const d=await fetch(`${API}/health`).then(r=>r.json());
+    const el=document.getElementById('health-res');el.style.display='block';el.className='result-box';
+    el.textContent='✅ Sistema operativo\n\n'+JSON.stringify(d,null,2);
+  }catch(e){const el=document.getElementById('health-res');el.style.display='block';el.className='result-box result-error';el.textContent='❌ '+e.message;}
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────
+const V=id=>document.getElementById(id)?.value?.trim();
+async function api(method,path,body=null){
+  const o={method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}};
+  if(body)o.body=JSON.stringify(body);
+  return fetch(API+path,o).then(r=>r.json());
+}
+async function post(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());}
+function mkTable(rows){
+  if(!rows||!rows.length)return '<p style="color:var(--text2)">Sin resultados</p>';
+  const keys=Object.keys(rows[0]);
+  return '<table class="data-table"><tr>'+keys.map(k=>`<th>${k}</th>`).join('')+'</tr>'+
+    rows.map(r=>'<tr>'+keys.map(k=>`<td>${r[k]!==undefined?r[k]:''}</td>`).join('')+'</tr>').join('')+'</table>';
+}
+function alert2(id,type,msg){const e=document.getElementById(id);e.className=`alert alert-${type}`;e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',4000);}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('login-screen').style.display!=='none')doLogin();});
+</script>
+</body>
+</html>

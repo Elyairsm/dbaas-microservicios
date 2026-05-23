@@ -1,0 +1,5 @@
+grpcio>=1.68.0
+grpcio-tools>=1.68.0
+protobuf>=5.26.1
+PyJWT>=2.8.0
+bcrypt>=4.1.3

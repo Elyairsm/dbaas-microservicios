@@ -1,0 +1,77 @@
+version: "3.9"
+
+networks:
+  dbaas_net:
+    driver: bridge
+
+volumes:
+  auth_data:
+  storage_data:
+
+services:
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    container_name: dbaas_auth
+    networks: [dbaas_net]
+    ports:
+      - "50051:50051"
+    environment:
+      GRPC_PORT: 50051
+      JWT_SECRET: "change_me_in_production"
+      JWT_EXPIRY_HOURS: 24
+      LOG_LEVEL: DEBUG
+    volumes:
+      - auth_data:/app/data
+    restart: unless-stopped
+
+  storage-service:
+    build:
+      context: .
+      dockerfile: storage_service/Dockerfile
+    container_name: dbaas_storage
+    networks: [dbaas_net]
+    ports:
+      - "50053:50053"
+    environment:
+      GRPC_PORT: 50053
+      DATA_DIR: /app/data
+      LOG_LEVEL: DEBUG
+    volumes:
+      - storage_data:/app/data
+    restart: unless-stopped
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin_service/Dockerfile
+    container_name: dbaas_admin
+    networks: [dbaas_net]
+    ports:
+      - "50052:50052"
+    environment:
+      GRPC_PORT: 50052
+      AUTH_SERVICE_ADDR: auth-service:50051
+      STORAGE_SERVICE_ADDR: storage-service:50053
+      DATA_DIR: /app/data
+      LOG_LEVEL: DEBUG
+    volumes:
+      - storage_data:/app/data
+    depends_on:
+      - auth-service
+      - storage-service
+    restart: unless-stopped
+
+  # ─── Dozzle Agent (Ubuntu) ────────────────────────────────────────────────
+  dozzle-agent:
+    image: amir20/dozzle:latest
+    container_name: dbaas_dozzle_agent_ubuntu
+    networks: [dbaas_net]
+    ports:
+      - "7007:7007"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: agent
+    restart: unless-stopped

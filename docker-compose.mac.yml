@@ -1,0 +1,89 @@
+# ══════════════════════════════════════════════════════
+#  MAC — Capa de procesamiento
+#  Servicios: Gateway + Query + Aggregation + RabbitMQ
+#  Ubuntu IP: 192.168.1.79
+#  Comando: docker compose -f docker-compose.mac.yml up --build
+# ══════════════════════════════════════════════════════
+
+networks:
+  dbaas_mac:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: dbaas_rabbitmq
+    networks: [dbaas_mac]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: dbaas
+      RABBITMQ_DEFAULT_PASS: dbaas123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  aggregation-service:
+    build:
+      context: .
+      dockerfile: aggregation_service/Dockerfile
+    container_name: dbaas_aggregation
+    networks: [dbaas_mac]
+    ports:
+      - "50055:50055"
+    environment:
+      GRPC_PORT: 50055
+      STORAGE_SERVICE_ADDR: 192.168.1.79:50053
+      RABBITMQ_URL: "amqp://dbaas:dbaas123@rabbitmq:5672/"
+      MPI_WORKERS: 4
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  query-service:
+    build:
+      context: .
+      dockerfile: query_service/Dockerfile
+    container_name: dbaas_query
+    networks: [dbaas_mac]
+    ports:
+      - "50054:50054"
+    environment:
+      GRPC_PORT: 50054
+      AUTH_SERVICE_ADDR: 192.168.1.79:50051
+      STORAGE_SERVICE_ADDR: 192.168.1.79:50053
+      AGGREGATION_SERVICE_ADDR: aggregation-service:50055
+      RABBITMQ_URL: "amqp://dbaas:dbaas123@rabbitmq:5672/"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregation-service:
+        condition: service_started
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: dbaas_gateway
+    networks: [dbaas_mac]
+    ports:
+      - "8000:8000"
+    environment:
+      AUTH_SERVICE_ADDR: 192.168.1.79:50051
+      ADMIN_SERVICE_ADDR: 192.168.1.79:50052
+      QUERY_SERVICE_ADDR: query-service:50054
+    depends_on:
+      query-service:
+        condition: service_started
+    restart: unless-stopped

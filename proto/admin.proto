@@ -1,0 +1,50 @@
+syntax = "proto3";
+package admin;
+
+service AdminService {
+  rpc CreateDatabase (DatabaseRequest)   returns (AdminResponse);
+  rpc ListDatabases  (ListRequest)       returns (ListResponse);
+  rpc DeleteDatabase (DatabaseRequest)   returns (AdminResponse);
+  rpc CreateTable    (TableRequest)      returns (AdminResponse);
+  rpc ListTables     (ListTablesRequest) returns (ListResponse);
+  rpc DeleteTable    (TableRequest)      returns (AdminResponse);
+}
+
+message DatabaseRequest {
+  string db_name = 1;
+  string token   = 2;
+}
+
+message ColumnDef {
+  string name     = 1;
+  string type     = 2;     // "string" | "int" | "float" | "bool"
+  bool   nullable = 3;
+  bool   primary  = 4;
+}
+
+message TableRequest {
+  string            db_name    = 1;
+  string            table_name = 2;
+  repeated ColumnDef columns   = 3;
+  string            token      = 4;
+}
+
+message ListRequest {
+  string token = 1;
+}
+
+message ListTablesRequest {
+  string db_name = 1;
+  string token   = 2;
+}
+
+message AdminResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ListResponse {
+  bool             success = 1;
+  repeated string  items   = 2;
+  string           message = 3;
+}

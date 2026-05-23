@@ -1,0 +1,50 @@
+syntax = "proto3";
+package storage;
+
+import "google/protobuf/struct.proto";
+
+service StorageService {
+  rpc Insert (InsertRequest) returns (StorageResponse);
+  rpc Find   (FindRequest)   returns (FindResponse);
+  rpc Update (UpdateRequest) returns (StorageResponse);
+  rpc Delete (DeleteRequest) returns (StorageResponse);
+}
+
+message InsertRequest {
+  string                  db_name    = 1;
+  string                  table_name = 2;
+  google.protobuf.Struct  record     = 3;
+}
+
+message FindRequest {
+  string                  db_name    = 1;
+  string                  table_name = 2;
+  google.protobuf.Struct  filter     = 3;  // empty = match all
+  int32                   limit      = 4;  // 0 = no limit
+  int32                   offset     = 5;
+}
+
+message UpdateRequest {
+  string                  db_name    = 1;
+  string                  table_name = 2;
+  google.protobuf.Struct  filter     = 3;
+  google.protobuf.Struct  updates    = 4;
+}
+
+message DeleteRequest {
+  string                  db_name    = 1;
+  string                  table_name = 2;
+  google.protobuf.Struct  filter     = 3;
+}
+
+message StorageResponse {
+  bool   success       = 1;
+  string message       = 2;
+  int32  affected_rows = 3;
+}
+
+message FindResponse {
+  bool                            success = 1;
+  repeated google.protobuf.Struct records = 2;
+  string                          message = 3;
+}

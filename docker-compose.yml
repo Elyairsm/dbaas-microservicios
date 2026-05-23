@@ -1,0 +1,159 @@
+version: "3.9"
+
+networks:
+  dbaas_net:
+    driver: bridge
+
+volumes:
+  auth_data:
+  storage_data:
+  rabbitmq_data:
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: dbaas_rabbitmq
+    networks: [dbaas_net]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: dbaas
+      RABBITMQ_DEFAULT_PASS: dbaas123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    container_name: dbaas_auth
+    networks: [dbaas_net]
+    ports:
+      - "50051:50051"
+    environment:
+      GRPC_PORT: 50051
+      JWT_SECRET: "change_me_in_production"
+      JWT_EXPIRY_HOURS: 24
+    volumes:
+      - auth_data:/app/data
+    restart: unless-stopped
+
+  storage-service:
+    build:
+      context: .
+      dockerfile: storage_service/Dockerfile
+    container_name: dbaas_storage
+    networks: [dbaas_net]
+    ports:
+      - "50053:50053"
+    environment:
+      GRPC_PORT: 50053
+      DATA_DIR: /app/data
+    volumes:
+      - storage_data:/app/data
+    restart: unless-stopped
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin_service/Dockerfile
+    container_name: dbaas_admin
+    networks: [dbaas_net]
+    ports:
+      - "50052:50052"
+    environment:
+      GRPC_PORT: 50052
+      AUTH_SERVICE_ADDR: auth-service:50051
+      STORAGE_SERVICE_ADDR: storage-service:50053
+      DATA_DIR: /app/data
+    volumes:
+      - storage_data:/app/data
+    depends_on:
+      - auth-service
+      - storage-service
+    restart: unless-stopped
+
+  aggregation-service:
+    build:
+      context: .
+      dockerfile: aggregation_service/Dockerfile
+    container_name: dbaas_aggregation
+    networks: [dbaas_net]
+    ports:
+      - "50055:50055"
+    environment:
+      GRPC_PORT: 50055
+      STORAGE_SERVICE_ADDR: storage-service:50053
+      RABBITMQ_URL: "amqp://dbaas:dbaas123@rabbitmq:5672/"
+      MPI_WORKERS: 4
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      storage-service:
+        condition: service_started
+    restart: unless-stopped
+
+  query-service:
+    build:
+      context: .
+      dockerfile: query_service/Dockerfile
+    container_name: dbaas_query
+    networks: [dbaas_net]
+    ports:
+      - "50054:50054"
+    environment:
+      GRPC_PORT: 50054
+      AUTH_SERVICE_ADDR: auth-service:50051
+      STORAGE_SERVICE_ADDR: storage-service:50053
+      AGGREGATION_SERVICE_ADDR: aggregation-service:50055
+      RABBITMQ_URL: "amqp://dbaas:dbaas123@rabbitmq:5672/"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      storage-service:
+        condition: service_started
+      aggregation-service:
+        condition: service_started
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: dbaas_gateway
+    networks: [dbaas_net]
+    ports:
+      - "8000:8000"
+    environment:
+      AUTH_SERVICE_ADDR: auth-service:50051
+      ADMIN_SERVICE_ADDR: admin-service:50052
+      QUERY_SERVICE_ADDR: query-service:50054
+    depends_on:
+      - auth-service
+      - admin-service
+      - query-service
+    restart: unless-stopped
+
+  # ─── Monitor de logs en tiempo real ──────────────────────────────────────────
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dbaas_dozzle
+    networks: [dbaas_net]
+    ports:
+      - "8888:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_LEVEL: debug          # muestra logs debug de todos los servicios
+      DOZZLE_TAILSIZE: 300         # últimas 300 líneas al abrir
+      DOZZLE_FILTER: "name=dbaas"  # solo contenedores del proyecto
+    restart: unless-stopped
