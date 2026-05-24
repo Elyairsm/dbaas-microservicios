@@ -31,7 +31,7 @@ RabbitMQ        :5672
 
 ---
 
-## 🧩 Microservicios
+## Microservicios
 
 | Servicio | Puerto | Responsabilidad | Máquina |
 |----------|--------|-----------------|---------|
@@ -110,7 +110,7 @@ docker compose -f docker-compose.mac.yml up --build
 
 ---
 
-## 🔑 Autenticación
+## Autenticación
 
 | Rol | Permisos |
 |-----|----------|
@@ -128,7 +128,7 @@ curl -X POST http://localhost:8000/auth/login \
 
 ---
 
-## 📡 Endpoints principales
+## Endpoints principales
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
@@ -224,7 +224,7 @@ echo "✅ 10 inserts concurrentes completados"
 
 ---
 
-## 🐰 Monitoreo RabbitMQ
+##  Monitoreo RabbitMQ
 
 Panel: `http://localhost:15672` — Usuario: `dbaas` / Contraseña: `dbaas123`
 
